@@ -1,0 +1,180 @@
+
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#101827">
+<title>Daily Hisab — Cash & Online Register</title>
+<style>
+:root{--bg:#0b1220;--panel:#131f32;--panel2:#1b2a40;--text:#f5f7fb;--muted:#aab7ca;--line:#2b3b52;--green:#20c997;--blue:#4da3ff;--purple:#a78bfa;--orange:#ffad5c;--red:#ff6b81}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(145deg,#0b1220,#111d31 55%,#101827);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:16px;min-height:100vh}
+.wrap{max-width:1050px;margin:auto}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}.brand h1{font-size:25px;margin:0}.brand p{margin:4px 0;color:var(--muted);font-size:13px}.pill{background:#1d3650;color:#9ed4ff;border:1px solid #315477;padding:7px 11px;border-radius:30px;font-size:12px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}.stat{padding:15px;border-radius:16px;background:linear-gradient(135deg,#1b2c43,#142236);border:1px solid var(--line);min-width:0}.stat small{color:var(--muted);display:block;font-size:12px}.stat strong{display:block;font-size:clamp(19px,3vw,26px);margin-top:6px;overflow-wrap:anywhere}.stat.cash{border-top:3px solid var(--green)}.stat.online{border-top:3px solid var(--blue)}.stat.total{border-top:3px solid var(--purple)}.stat.days{border-top:3px solid var(--orange)}
+.card{background:rgba(19,31,50,.96);border:1px solid var(--line);border-radius:18px;padding:17px;margin-bottom:15px;box-shadow:0 10px 30px #0002}.card h2{font-size:17px;margin:0 0 13px}.formgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.field label{display:block;color:var(--muted);font-size:12px;margin-bottom:6px}.field input,.field select{width:100%;padding:12px;border:1px solid #344761;border-radius:11px;background:#0e1929;color:white;font-size:15px;outline:none}.field input:focus,.field select:focus{border-color:var(--blue)}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}.btn{border:0;border-radius:11px;padding:11px 15px;font-weight:700;font-size:14px;cursor:pointer;background:#263951;color:white}.btn.primary{background:linear-gradient(100deg,#11ad83,#20c997);color:#06251e}.btn.blue{background:linear-gradient(100deg,#2878d8,#4da3ff);color:#061b31}.btn.purple{background:linear-gradient(100deg,#805ad5,#a78bfa);color:#190e32}.btn.red{background:#4a2635;color:#ff9caf}.btn:active{transform:scale(.98)}
+.toolbar{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}.toolbar input{max-width:210px;padding:10px;border-radius:10px;border:1px solid #344761;background:#0e1929;color:white}.tablewrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:650px}th,td{text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);font-size:13px}th{color:#9fb0c6;font-weight:600}td strong{font-size:14px}.tag{display:inline-block;padding:4px 8px;border-radius:20px;font-size:11px;background:#1e3e3b;color:#6ce2bd}.empty{text-align:center;color:var(--muted);padding:25px}.mini{padding:7px 9px;font-size:12px;border-radius:8px}.muted{color:var(--muted)}.note{font-size:12px;line-height:1.5;color:var(--muted);margin-top:10px}.dayhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.todaydate{color:#a9cfff;font-size:13px}.footer{text-align:center;color:#77869b;font-size:11px;padding:12px}
+@media(max-width:720px){body{padding:11px}.grid{grid-template-columns:repeat(2,1fr)}.formgrid{grid-template-columns:1fr 1fr}.brand h1{font-size:22px}.card{padding:14px}}
+@media(max-width:420px){.formgrid{grid-template-columns:1fr}.actions .btn{flex:1}.toolbar input{max-width:100%;width:100%}}
+@media print{body{background:white;color:#111;padding:0}.no-print{display:none!important}.card{box-shadow:none;border:1px solid #ddd;background:white;color:#111}.stat{background:#f4f7fb;color:#111;border:1px solid #ddd}.stat small,.muted{color:#555}.tag{background:#e7f7f1;color:#087a58}th,td{border-color:#ddd;color:#111}}
+
+.bill-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.bill-card{background:linear-gradient(145deg,#203d60,#332653);border:1px solid #536582;border-radius:15px;padding:14px;cursor:pointer;box-shadow:0 7px 18px #0003;transition:.15s}
+.bill-card:active{transform:scale(.98)}
+.bill-card .bill-date{font-weight:800;font-size:15px}
+.bill-card .bill-day{color:#c5d5ea;font-size:12px;margin:4px 0 12px}
+.bill-card .bill-total{font-size:23px;font-weight:800;color:#fff}
+.bill-card .bill-break{display:flex;justify-content:space-between;color:#d8e6f7;font-size:12px;margin-top:9px}
+.modal{position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;padding:16px;z-index:99}
+.modal.show{display:flex}
+.modal-box{width:min(100%,460px);background:#142238;border:1px solid #526681;border-radius:19px;padding:18px;max-height:90vh;overflow:auto}
+.modal-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.modal-head h2{margin:0}
+.preview-bill{background:linear-gradient(145deg,#f4f7ff,#e8f4ff);color:#17253a;border-radius:15px;padding:18px;margin:14px 0}
+.preview-bill h3{margin:0;color:#254d80}
+.preview-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #cbd7e6}
+.preview-total{font-size:23px;font-weight:900;color:#176d57}
+.billno{color:#ffd166;font-weight:900;letter-spacing:.5px}.bill-search{display:flex;gap:8px;flex-wrap:wrap}.bill-search input{flex:1;min-width:160px}
+@media(max-width:480px){.bill-gallery{grid-template-columns:repeat(2,minmax(0,1fr))}.bill-card{padding:11px}.bill-card .bill-total{font-size:19px}}
+
+.lifetime-card{background:linear-gradient(135deg,#172c49 0%,#24204c 52%,#143e48 100%);border:1px solid #526b91;padding:22px;overflow:hidden;position:relative}
+.lifetime-card:before{content:"";position:absolute;width:230px;height:230px;border-radius:50%;right:-75px;top:-110px;background:#8b5cf633;filter:blur(2px)}
+.lifetime-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;position:relative;z-index:1;margin-bottom:18px}
+.lifetime-heading h2{margin:0;font-size:21px}.lifetime-heading p{margin:6px 0 0;color:#b9c9e2;font-size:13px}
+.lifetime-chip{padding:7px 11px;border-radius:30px;background:linear-gradient(90deg,#f6c85f,#ff9f43);color:#38220a;font-size:11px;font-weight:900;letter-spacing:1px}
+.lifetime-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;position:relative;z-index:1}
+.life-stat{min-height:142px;padding:18px 16px;border-radius:17px;color:#fff;box-shadow:0 10px 24px #0003;display:flex;flex-direction:column;justify-content:space-between}
+.life-stat small{font-size:13px;color:#fff;opacity:.95}.life-stat strong{font-size:clamp(23px,3vw,32px);font-weight:900;overflow-wrap:anywhere;margin:13px 0}
+.life-stat span{font-size:11px;color:#fff;opacity:.85}
+.life-cash{background:linear-gradient(140deg,#087f5b,#20c997 70%,#68e7bd)}
+.life-online{background:linear-gradient(140deg,#1556a8,#3187f5 70%,#71b5ff)}
+.life-business{background:linear-gradient(140deg,#6b35b5,#9b62e8 65%,#d09aff)}
+@media(max-width:650px){.lifetime-grid{grid-template-columns:1fr}.life-stat{min-height:125px;padding:18px 20px}.lifetime-heading h2{font-size:18px}}
+
+
+.photo-upload{border:1px dashed #4b78a8;border-radius:14px;padding:14px;background:#10243a}
+.photo-upload input{width:100%;color:#dcecff}
+.photo-hint{font-size:12px;color:#a9bdd5;margin-top:7px;line-height:1.5}
+.photo-strip{display:flex;gap:9px;flex-wrap:wrap;margin-top:10px}
+.photo-thumb{width:88px;height:88px;object-fit:cover;border-radius:10px;border:2px solid #5b8fc6;cursor:pointer}
+.photo-count{font-size:12px;color:#9ed4ff;margin-top:6px}
+.photo-modal{position:fixed;inset:0;background:#000e;z-index:120;display:none;align-items:center;justify-content:center;padding:16px}
+.photo-modal.show{display:flex}
+.photo-modal img{max-width:100%;max-height:82vh;object-fit:contain;border-radius:12px}
+.gallery-photo-row{display:flex;gap:6px;align-items:center;margin-top:8px}
+.gallery-photo-row img{width:38px;height:38px;object-fit:cover;border-radius:7px;border:1px solid #6d8db4}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+ <header class="top">
+  <div class="brand"><h1>📒 Daily Hisab</h1><p>Roz ka Cash • Online • Total • Bill Register</p></div>
+  <span class="pill">🔒 Aapka data isi device mein save hota hai</span>
+ </header>
+
+ <section class="grid">
+  <div class="stat cash"><small>💵 Aaj ka Cash</small><strong id="todayCash">₹0</strong></div>
+  <div class="stat online"><small>📱 Aaj ka Online</small><strong id="todayOnline">₹0</strong></div>
+  <div class="stat total"><small>🧮 Aaj ka Total</small><strong id="todayTotal">₹0</strong></div>
+  <div class="stat days"><small>📅 Ab tak ka Total</small><strong id="grandTotal">₹0</strong></div>
+ </section>
+
+ <section class="card lifetime-card">
+  <div class="lifetime-heading">
+   <div><h2>🏆 Shuruaat Se Aaj Tak — Total Dhandha</h2><p>Sabhi saved dates ka jama hisaab</p></div>
+   <span class="lifetime-chip">LIFETIME</span>
+  </div>
+  <div class="lifetime-grid">
+   <div class="life-stat life-cash"><small>💵 Total Cash (Shuruaat Se)</small><strong id="lifeCash">₹0</strong><span>Ab tak mila hua cash</span></div>
+   <div class="life-stat life-online"><small>📱 Total Online (Shuruaat Se)</small><strong id="lifeOnline">₹0</strong><span>Ab tak online payment</span></div>
+   <div class="life-stat life-business"><small>🚀 Total Dhandha (Cash + Online)</small><strong id="lifeBusiness">₹0</strong><span>Grand business collection</span></div>
+  </div>
+ </section>
+
+ <section class="card no-print">
+  <div class="dayhead"><h2 id="formTitle">➕ Aaj ka Hisab Add Karein</h2><span class="todaydate" id="todayLabel"></span></div>
+  <form id="entryForm">
+   <div class="formgrid">
+    <div class="field"><label for="entryDate">Bill Date / तारीख</label><input id="entryDate" type="date" required></div>
+    <div class="field"><label for="billNo">Bill Number (खाली छोड़ें = Auto)</label><input id="billNo" type="text" maxlength="32" placeholder="AR001"></div>
+    <div class="field"><label for="cash">Cash (₹)</label><input id="cash" type="number" min="0" step="0.01" placeholder="Jaise 3000" value="0" required></div>
+    <div class="field"><label for="online">Online (₹)</label><input id="online" type="number" min="0" step="0.01" placeholder="Jaise 4400" value="0" required></div>
+    <div class="field"><label for="extra">Extra / Majhar / Other (₹)</label><input id="extra" type="number" step="0.01" placeholder="Optional" value="0"></div>
+    <div class="field"><label for="note">Note (Optional)</label><input id="note" type="text" maxlength="80" placeholder="Jaise Wednesday sale"></div>
+    <div class="field photo-upload" style="grid-column:1/-1">
+     <label for="paymentPhotos">📷 Payment Screenshot / Photo</label>
+     <input id="paymentPhotos" type="file" accept="image/*" multiple>
+     <div class="photo-hint">Is date ke Cash/Online hisaab ke saath payment screenshot attach karein. Multiple photos select kar sakte hain. Photos isi device mein save hongi.</div>
+     <div id="selectedPhotoPreview" class="photo-strip"></div>
+    </div>
+    <div class="field"><label for="extraMode">Extra ko total mein</label><select id="extraMode"><option value="no" selected>Alag dikhayein</option><option value="yes">Jodein</option></select></div>
+   </div>
+   <div class="actions"><button class="btn primary" type="submit" id="saveBtn">💾 Hisab Save Karein</button><button class="btn" type="button" id="resetBtn">Reset</button><button class="btn blue" type="button" id="billBtn">🧾 Aaj ka PDF Bill</button><button class="btn" type="button" id="shareTodayBtn">📲 WhatsApp Share</button></div>
+   <p class="note">Har date ka ek daily record rakha jayega. Usi date par dobara save karne par purana record update hoga. Extra amount optional hai.</p>
+  </form>
+ </section>
+
+ <section class="card no-print" id="utrPanel">
+  <h2>🔔 UTR / Payment Notification Match</h2>
+  <p class="note">Google Pay ka notification text yahan paste karein, phir UTR aur amount daalein. Website notification ke text se milan karegi. Yeh bank ki live verification nahi hai.</p>
+  <div class="formgrid">
+   <div class="field" style="grid-column:1/-1"><label for="notifText">Google Pay Notification Text</label><textarea id="notifText" rows="3" placeholder="Yahan notification ka text paste karein (jaise Received ₹250 from ...)"></textarea></div>
+   <div class="field"><label for="utrDate">Payment Date</label><input id="utrDate" type="date"></div>
+   <div class="field"><label for="utrAmount">Payment Amount (₹)</label><input id="utrAmount" type="number" min="0.01" step="0.01" placeholder="250"></div>
+   <div class="field" style="grid-column:1/-1"><label for="utrNumber">UTR / UPI Transaction ID</label><input id="utrNumber" type="text" maxlength="64" placeholder="UTR number dalein"></div>
+  </div>
+  <div class="actions"><button class="btn primary" type="button" id="matchUtrBtn">🔎 Notification se Match Karein</button></div>
+  <div id="utrStatus" class="note" aria-live="polite"></div>
+ </section>
+
+ <section class="card">
+  <div class="toolbar no-print"><h2>📆 Rozana History</h2><input id="searchDate" type="month" aria-label="Month filter"></div>
+  <div class="tablewrap"><table><thead><tr><th>Din / Date</th><th>Cash</th><th>Online</th><th>Extra</th><th>Total</th><th class="no-print">Action</th></tr></thead><tbody id="historyBody"></tbody></table></div>
+  <div class="empty" id="emptyState" hidden>Abhi koi hisab save nahi hai. Upar se pehla hisab add karein.</div>
+ </section>
+
+ <section class="card">
+  <div class="toolbar"><h2>🖼️ Colourful Bill Gallery</h2><span class="small">Card par tap karke bill dekhein</span></div>
+  <div class="bill-search no-print"><input id="billLookup" type="search" placeholder="Bill number likhein, jaise AR001"><button class="btn purple" id="findBillBtn">🔎 Find Bill</button></div>
+  <div class="bill-gallery" id="billGallery"></div>
+  <div class="empty" id="galleryEmpty" hidden>Is month mein abhi koi bill nahi hai.</div>
+ </section>
+
+ <section class="card">
+  <h2>📊 Selected Month Summary</h2>
+  <div class="grid" style="grid-template-columns:repeat(3,1fr);margin:0">
+   <div class="stat cash"><small>Month Cash</small><strong id="monthCash">₹0</strong></div>
+   <div class="stat online"><small>Month Online</small><strong id="monthOnline">₹0</strong></div>
+   <div class="stat total"><small>Month Total</small><strong id="monthTotal">₹0</strong></div>
+  </div>
+ </section>
+
+ <section class="card no-print">
+  <h2>🛠️ Bill & Data Tools</h2>
+  <div class="actions">
+   <button class="btn purple" id="allBillBtn">📄 Full History PDF</button>
+   <button class="btn blue" id="csvBtn">⬇️ Excel/CSV</button>
+   <button class="btn" id="backupBtn">💾 Backup Download</button><button class="btn red" id="clearAllBtn">🗑️ Clear All History</button>
+   <label class="btn" for="restoreFile">📂 Backup Restore</label><input id="restoreFile" type="file" accept="application/json" hidden>
+  </div>
+  <p class="note">Bill Gallery mein kisi bhi din ke card par tap karke bill preview, PDF download, WhatsApp share ya us din ki history delete karein. Backup file sambhal kar rakhein.</p>
+ </section>
+ <div class="footer">Daily Hisab Register • Offline-ready • Data aapke browser mein</div>
+</div>
+
+<div class="photo-modal" id="photoLightbox"><div style="width:100%;text-align:right"><button class="btn red" id="closePhoto">✕ Close</button><br><img id="lightboxImage" alt="Payment screenshot"></div></div>
+<div class="modal" id="billModal" role="dialog" aria-modal="true">
+ <div class="modal-box">
+  <div class="modal-head"><h2>🧾 Bill Preview</h2><button class="btn red" id="closeModal">✕</button></div>
+  <div id="billPreview"></div><div><b>📷 Payment Photos</b><div id="savedPhotoPreview" class="photo-strip"></div><div id="savedPhotoCount" class="photo-count"></div></div>
+  <div class="actions">
+   <button class="btn primary" id="modalDownload">⬇️ PDF Download</button><button class="btn purple" id="modalImage">🖼️ Save Image</button>
+   <button class="btn blue" id="modalShare">📲 WhatsApp Share</button>
+   <button class="btn red" id="modalDelete">🗑️ Delete History</button>
+  </div>
+ </div>
+</div>
+
+
+<script>
+const KEY='daily_hisab_records_v1';
