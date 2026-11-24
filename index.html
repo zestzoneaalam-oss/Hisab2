@@ -1,0 +1,279 @@
+
+<!-- ===== SETH CASH LEDGER: NEW SEPARATE SECTION ===== -->
+<style>
+.seth-card{background:#fff;border:2px solid #16a085;border-radius:15px;padding:16px;margin:18px 0;color:#222}
+.seth-card h2{margin:0 0 14px;color:#087f5b}
+.seth-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.seth-card label{display:block;font-weight:600;margin:9px 0 5px}
+.seth-card input,.seth-card textarea{width:100%;box-sizing:border-box;padding:12px;border:1px solid #ccc;border-radius:9px;font-size:16px}
+.seth-card button{border:0;border-radius:9px;padding:11px 14px;margin:5px 3px 5px 0;background:#087f5b;color:white;font-weight:700}
+.seth-card button.delete{background:#dc3545}
+.seth-card button.edit{background:#2563eb}
+.seth-stat{background:#e8f8f2;border-radius:10px;padding:12px;text-align:center}
+.seth-stat small{display:block;color:#555}
+.seth-stat strong{display:block;font-size:20px;margin-top:5px}
+.seth-table-wrap{overflow-x:auto;margin-top:12px}
+.seth-table{width:100%;border-collapse:collapse;min-width:500px}
+.seth-table th,.seth-table td{padding:9px;border-bottom:1px solid #ddd;text-align:left}
+.seth-table th{background:#e8f8f2}
+@media(max-width:480px){.seth-grid{grid-template-columns:1fr}}
+</style>
+
+<section class="seth-card" id="sethCashLedger">
+  <h2>💰 Seth Cash हिसाब</h2>
+
+  <div class="seth-grid">
+    <div class="seth-stat">
+      <small>मेरे पास कुल कैश</small>
+      <strong id="sethTotalCash">₹0</strong>
+    </div>
+    <div class="seth-stat">
+      <small>Seth को कुल दिया</small>
+      <strong id="sethTotalSent">₹0</strong>
+    </div>
+    <div class="seth-stat">
+      <small>Seth को बाकी देना है</small>
+      <strong id="sethTotalPending">₹0</strong>
+    </div>
+    <div class="seth-stat">
+      <small>कुल एंट्री</small>
+      <strong id="sethEntryCount">0</strong>
+    </div>
+  </div>
+
+  <label for="sethDate">तारीख</label>
+  <input type="date" id="sethDate">
+
+  <label for="sethCashAvailable">मेरे पास कितना कैश था?</label>
+  <input type="number" id="sethCashAvailable" min="0" step="0.01" placeholder="जैसे 5000">
+
+  <label for="sethCashSent">Seth को कितना दिया?</label>
+  <input type="number" id="sethCashSent" min="0" step="0.01" placeholder="जैसे 3000">
+
+  <label for="sethNote">नोट (वैकल्पिक)</label>
+  <input type="text" id="sethNote" placeholder="जैसे आज का कैश सेटलमेंट">
+
+  <p><b>बाकी कैश:</b> <span id="sethLivePending">₹0</span></p>
+
+  <button type="button" id="sethSaveBtn">💾 हिसाब सेव करें</button>
+  <button type="button" id="sethCancelEdit" style="display:none;background:#666">कैंसल एडिट</button>
+
+  <h3>📒 Seth Cash की अलग History</h3>
+  <div class="seth-table-wrap">
+    <table class="seth-table">
+      <thead>
+        <tr>
+          <th>तारीख</th>
+          <th>मेरे पास कैश</th>
+          <th>दिया</th>
+          <th>बाकी</th>
+          <th>नोट</th>
+          <th>एक्शन</th>
+        </tr>
+      </thead>
+      <tbody id="sethHistoryBody"></tbody>
+    </table>
+  </div>
+  <p id="sethEmpty" style="display:none;text-align:center;color:#777">
+    अभी Seth Cash की कोई एंट्री नहीं है।
+  </p>
+</section>
+
+<script>
+(function(){
+  "use strict";
+
+  // Daily Hisab की पुरानी KEY को छूना नहीं है।
+  // Seth Cash का डेटा अलग KEY में सेव होगा।
+  const SETH_KEY = "daily_hisab_seth_cash_ledger_v1";
+
+  const $s = id => document.getElementById(id);
+  let sethRecords = [];
+  let editingId = null;
+
+  function loadSeth(){
+    try{
+      const data = JSON.parse(localStorage.getItem(SETH_KEY) || "[]");
+      sethRecords = Array.isArray(data) ? data : [];
+    }catch(e){
+      sethRecords = [];
+    }
+  }
+
+  function saveSeth(){
+    localStorage.setItem(SETH_KEY, JSON.stringify(sethRecords));
+  }
+
+  function money(n){
+    return "₹" + Number(n || 0).toLocaleString("en-IN", {
+      maximumFractionDigits:2
+    });
+  }
+
+  function pending(cash,sent){
+    return Number(cash || 0) - Number(sent || 0);
+  }
+
+  function updateLive(){
+    const cash = Number($s("sethCashAvailable").value || 0);
+    const sent = Number($s("sethCashSent").value || 0);
+    $s("sethLivePending").textContent = money(pending(cash,sent));
+  }
+
+  function clearForm(){
+    editingId = null;
+    $s("sethDate").value = new Date().toLocaleDateString("en-CA");
+    $s("sethCashAvailable").value = "";
+    $s("sethCashSent").value = "";
+    $s("sethNote").value = "";
+    $s("sethSaveBtn").textContent = "💾 हिसाब सेव करें";
+    $s("sethCancelEdit").style.display = "none";
+    updateLive();
+  }
+
+  function render(){
+    let totalCash = 0;
+    let totalSent = 0;
+
+    sethRecords.forEach(r=>{
+      totalCash += Number(r.cash || 0);
+      totalSent += Number(r.sent || 0);
+    });
+
+    $s("sethTotalCash").textContent = money(totalCash);
+    $s("sethTotalSent").textContent = money(totalSent);
+    $s("sethTotalPending").textContent = money(totalCash-totalSent);
+    $s("sethEntryCount").textContent = sethRecords.length;
+
+    const body = $s("sethHistoryBody");
+    body.innerHTML = "";
+
+    const sorted = [...sethRecords].sort((a,b)=>
+      String(b.date).localeCompare(String(a.date))
+    );
+
+    $s("sethEmpty").style.display = sorted.length ? "none" : "block";
+
+    sorted.forEach(r=>{
+      const tr = document.createElement("tr");
+
+      const values = [
+        r.date,
+        money(r.cash),
+        money(r.sent),
+        money(pending(r.cash,r.sent)),
+        r.note || "-"
+      ];
+
+      values.forEach(value=>{
+        const td = document.createElement("td");
+        td.textContent = value;
+        tr.appendChild(td);
+      });
+
+      const action = document.createElement("td");
+
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "edit";
+      edit.textContent = "Edit";
+      edit.onclick = ()=>editSeth(r.id);
+
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "delete";
+      del.textContent = "Delete";
+      del.onclick = ()=>deleteSeth(r.id);
+
+      action.append(edit,del);
+      tr.appendChild(action);
+      body.appendChild(tr);
+    });
+  }
+
+  function editSeth(id){
+    const r = sethRecords.find(x=>x.id===id);
+    if(!r) return;
+
+    editingId = id;
+    $s("sethDate").value = r.date;
+    $s("sethCashAvailable").value = r.cash;
+    $s("sethCashSent").value = r.sent;
+    $s("sethNote").value = r.note || "";
+    $s("sethSaveBtn").textContent = "अपडेट करें";
+    $s("sethCancelEdit").style.display = "inline-block";
+    updateLive();
+
+    $s("sethCashLedger").scrollIntoView({behavior:"smooth"});
+  }
+
+  function deleteSeth(id){
+    if(!confirm("क्या यह Seth Cash एंट्री डिलीट करनी है?")) return;
+
+    sethRecords = sethRecords.filter(x=>x.id!==id);
+    saveSeth();
+    render();
+
+    if(editingId===id) clearForm();
+  }
+
+  $s("sethSaveBtn").addEventListener("click",()=>{
+    const date = $s("sethDate").value;
+    const cash = Number($s("sethCashAvailable").value);
+    const sent = Number($s("sethCashSent").value);
+    const note = $s("sethNote").value.trim();
+
+    if(!date){
+      alert("तारीख चुनें।");
+      return;
+    }
+
+    if($s("sethCashAvailable").value==="" ||
+       $s("sethCashSent").value===""){
+      alert("कैश और Seth को दिया गया पैसा दोनों भरें।");
+      return;
+    }
+
+    if(!Number.isFinite(cash) || !Number.isFinite(sent) ||
+       cash<0 || sent<0){
+      alert("सही रकम डालें।");
+      return;
+    }
+
+    if(sent>cash){
+      alert("Seth को दिया गया पैसा उपलब्ध कैश से ज्यादा नहीं हो सकता।");
+      return;
+    }
+
+    if(editingId){
+      const index = sethRecords.findIndex(x=>x.id===editingId);
+      if(index!==-1){
+        sethRecords[index] = {
+          ...sethRecords[index],
+          date,cash,sent,note
+        };
+      }
+    }else{
+      sethRecords.push({
+        id: "SETH-" + Date.now() + "-" + Math.random().toString(36).slice(2,7),
+        date,cash,sent,note,
+        createdAt: new Date().toISOString()
+      });
+    }
+
+    saveSeth();
+    render();
+    clearForm();
+    alert("Seth Cash का हिसाब सेव हो गया।");
+  });
+
+  $s("sethCashAvailable").addEventListener("input",updateLive);
+  $s("sethCashSent").addEventListener("input",updateLive);
+  $s("sethCancelEdit").addEventListener("click",clearForm);
+
+  loadSeth();
+  clearForm();
+  render();
+})();
+</script>
+<!-- ===== END SETH CASH LEDGER ===== -->
